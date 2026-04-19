@@ -280,33 +280,18 @@ const AdminPage = () => {
     );
 };
 
-<div className="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Message</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {messages.length > 0 ? (
-                messages.map((msg) => (
-                    <tr key={msg._id}>
-                        <td>{msg.name}</td>
-                        <td>{msg.email}</td>
-                        <td>{msg.message.substring(0, 30)}...</td>
-                        <td>{new Date(msg.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                ))
-            ) : (
-                <tr>
-                    <td colSpan="4">No messages found.</td>
-                </tr>
-            )}
-        </tbody>
-    </table>
-</div>
+{/* Example for the Members Table */ }
+<tbody>
+    {members.map((user) => (
+        <tr key={user._id}>
+            <td>{user.name}</td>
+            <td>{user.email}</td>
+            <td><span className={`badge ${user.status}`}>{user.status}</span></td>
+            <td>
+                <button onClick={() => toggleStatus(user._id)}>Toggle Status</button>
+            </td>
+        </tr>
+    ))}
+</tbody>
 
 export default AdminPage;
