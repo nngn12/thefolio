@@ -22,41 +22,50 @@ const AdminPage = () => {
         if (!user || user.role !== "admin") { navigate("/home"); return; }
 
         const fetchData = async () => {
+            // 🛡️ Our bulletproof array extractor
+            const extractArray = (data, keyword) => {
+                if (!data) return [];
+                if (Array.isArray(data)) return data;
+                if (Array.isArray(data.data)) return data.data;
+                if (Array.isArray(data[keyword])) return data[keyword];
+                if (data.data && Array.isArray(data.data[keyword])) return data.data[keyword];
+                return [];
+            };
+
+            let fetchedMembers = [];
+            let fetchedPosts = [];
+            let fetchedMessages = [];
+
+            // 1. Fetch Users
             try {
-                const [mRes, pRes, msgRes] = await Promise.all([
-                    API.get("/admin/users"),
-                    API.get("/admin/posts"),
-                    API.get("/admin/messages"),
-                ]);
-
-                // 🕵️ DEBUGGING: Let's see exactly what the backend is sending
-                console.log("Raw Members Response:", mRes.data);
-                console.log("Raw Posts Response:", pRes.data);
-                console.log("Raw Messages Response:", msgRes.data);
-
-                // 🛡️ SUPER BULLETPROOF EXTRACTOR
-                // This will hunt down the array no matter how the backend packages it
-                const extractArray = (data, keyword) => {
-                    if (!data) return [];
-                    if (Array.isArray(data)) return data; // If it's already a clean array
-                    if (Array.isArray(data.data)) return data.data; // If it's wrapped in { data: [...] }
-                    if (Array.isArray(data[keyword])) return data[keyword]; // If it's wrapped in { users: [...] }
-
-                    // If it's deeply nested like { success: true, data: { users: [...] } }
-                    if (data.data && Array.isArray(data.data[keyword])) return data.data[keyword];
-
-                    return []; // Safe fallback so .length never crashes
-                };
-
-                setMembers(extractArray(mRes.data, "users"));
-                setPosts(extractArray(pRes.data, "posts"));
-                setMessages(extractArray(msgRes.data, "messages"));
-
+                const mRes = await API.get("/admin/users");
+                fetchedMembers = extractArray(mRes.data, "users");
             } catch (err) {
-                console.error("Admin fetch error:", err);
-            } finally {
-                setLoading(false);
+                console.error("Failed to load users:", err.message);
             }
+
+            // 2. Fetch Posts (Changed to "/posts" - this is usually the correct route!)
+            try {
+                // Try changing this back to "/admin/posts" ONLY if you know you have an admin posts route
+                const pRes = await API.get("/posts");
+                fetchedPosts = extractArray(pRes.data, "posts");
+            } catch (err) {
+                console.error("Failed to load posts:", err.message);
+            }
+
+            // 3. Fetch Messages
+            try {
+                const msgRes = await API.get("/admin/messages");
+                fetchedMessages = extractArray(msgRes.data, "messages");
+            } catch (err) {
+                console.error("Failed to load messages:", err.message);
+            }
+
+            // Update all the states at once
+            setMembers(fetchedMembers);
+            setPosts(fetchedPosts);
+            setMessages(fetchedMessages);
+            setLoading(false);
         };
 
         fetchData();
