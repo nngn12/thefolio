@@ -6,7 +6,7 @@ import API from "../api/axios";
 
 const BASE_URL = process.env.REACT_APP_API_URL
     ? process.env.REACT_APP_API_URL.replace('/api', '')
-    : 'http://localhost:5000';
+    : 'https://thefolio-lw3l.onrender.com/';
 
 const ContactPage = () => {
     const { isDark } = useTheme();
@@ -21,8 +21,8 @@ const ContactPage = () => {
     const emailPattern = /^[^\s]+@[^\s]+\.[a-z]{2,}$/i;
     const validate = () => {
         const errs = {};
-        if (!formData.name.trim())    errs.name    = "Name is required";
-        if (!formData.email.trim())   errs.email   = "Email is required";
+        if (!formData.name.trim()) errs.name = "Name is required";
+        if (!formData.email.trim()) errs.email = "Email is required";
         else if (!emailPattern.test(formData.email)) errs.email = "Invalid email format";
         if (!formData.message.trim()) errs.message = "Message cannot be empty";
         return errs;

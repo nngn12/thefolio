@@ -110,7 +110,7 @@ const EditPostPage = () => {
                                 {/* Existing images */}
                                 {existingImages.map((img, idx) => (
                                     <div key={`existing-${idx}`} style={{ position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-                                        <img src={`http://localhost:5000/uploads/${img}`} alt={`Existing ${idx + 1}`} style={{ width: "100%", height: "88px", objectFit: "cover" }} />
+                                        <img src={`https://thefolio-lw3l.onrender.com//uploads/${img}`} alt={`Existing ${idx + 1}`} style={{ width: "100%", height: "88px", objectFit: "cover" }} />
                                         <button type="button" onClick={() => {
                                             setExistingImages(existingImages.filter((_, i) => i !== idx));
                                         }} style={{ position: "absolute", top: "6px", right: "6px", width: "22px", height: "22px", borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.55)", color: "white", cursor: "pointer", fontSize: "12px" }}>×</button>

@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const instance = axios.create({
     // Use env variable in production, fallback to localhost for dev
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+    baseURL: 'https://thefolio-lw3l.onrender.com//api',
 });
 
 instance.interceptors.request.use((config) => {

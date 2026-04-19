@@ -8,7 +8,7 @@ import API from "../api/axios";
 // This removes '/api' from your URL so it points to the root /uploads folder
 const BASE_URL = process.env.REACT_APP_API_URL
     ? process.env.REACT_APP_API_URL.replace('/api', '')
-    : 'http://localhost:5000';
+    : 'https://thefolio-lw3l.onrender.com/';
 
 const HomePage = () => {
     const navigate = useNavigate();
