@@ -29,8 +29,9 @@ const CreatePostPage = () => {
             fd.append("body", body);
 
             // ✅ Append each image to the 'images' field (must match backend)
+            // Change "images" to "image" here:
             images.forEach((file) => {
-                fd.append("images", file);
+                fd.append("image", file);
             });
 
             await API.post("/posts", fd, { headers: { "Content-Type": "multipart/form-data" } });
