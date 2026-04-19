@@ -20,6 +20,7 @@ const AdminPage = () => {
 
     useEffect(() => {
         if (!user || user.role !== "admin") { navigate("/home"); return; }
+
         const fetch = async () => {
             try {
                 const [mRes, pRes, msgRes] = await Promise.all([
@@ -27,13 +28,23 @@ const AdminPage = () => {
                     API.get("/admin/posts"),
                     API.get("/admin/messages"),
                 ]);
-                setMembers(mRes.data || []);
-                setPosts(pRes.data || []);
-                setMessages(msgRes.data || []);
+
+                // Defensively extract the arrays regardless of how the backend wraps them
+                const fetchedMembers = Array.isArray(mRes.data) ? mRes.data : mRes.data?.data || mRes.data?.users || [];
+                const fetchedPosts = Array.isArray(pRes.data) ? pRes.data : pRes.data?.data || pRes.data?.posts || [];
+                const fetchedMessages = Array.isArray(msgRes.data) ? msgRes.data : msgRes.data?.data || msgRes.data?.messages || [];
+
+                setMembers(fetchedMembers);
+                setPosts(fetchedPosts);
+                setMessages(fetchedMessages);
+
             } catch (err) {
-                console.error(err);
-            } finally { setLoading(false); }
+                console.error("Admin fetch error:", err);
+            } finally {
+                setLoading(false);
+            }
         };
+
         fetch();
     }, [user, navigate]);
 
@@ -124,7 +135,12 @@ const AdminPage = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px,1fr))", gap: "14px", marginBottom: "48px" }}>
                     {[
                         { label: "Members", val: members.length, color: t.pink },
-                        { label: "Active", val: members.filter(m => m.status === "active").length, color: t.success },
+                        {
+                            label: "Active",
+                            // Include "active" OR users who don't have a status explicitly set yet
+                            val: members.filter(m => m.status === "active" || !m.status).length,
+                            color: t.success
+                        },
                         { label: "Posts", val: posts.length, color: "#60a5fa" },
                         { label: "Unread msgs", val: unreadCount, color: "#a78bfa" },
                     ].map(s => (
