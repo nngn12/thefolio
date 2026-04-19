@@ -1,10 +1,10 @@
 // backend/routes/auth.routes.js
-const express  = require("express");
-const jwt      = require("jsonwebtoken");
-const bcrypt   = require("bcryptjs");
-const User     = require("../models/User");
-const OTP      = require("../models/OTP");
-const upload   = require("../middleware/upload");
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const OTP = require("../models/OTP");
+const upload = require("../middleware/upload");
 const { protect } = require("../middleware/auth.middleware");
 const { sendOTPEmail } = require("../utils/email");
 
@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
 
     // Hash password now so we don't store plaintext in OTP doc
-    const salt   = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
 
     const otp = makeOTP();
@@ -60,16 +60,9 @@ router.post("/verify-otp", async (req, res) => {
     if (record.otp !== otp)
       return res.status(400).json({ message: "Incorrect OTP. Please try again." });
 
-    // Create the user using the pre-hashed password
     const { name, hashedPassword } = record.userData;
 
-    // Use create but skip the pre-save hook for password (we already hashed it)
-    const user = new User({ name, email, password: hashedPassword });
-    // Mark password as not modified so pre-save hook won't re-hash
-    user.$ignore = true; // won't work — instead we'll directly set and bypass
-    // Actually: we need to bypass the pre-save hook. Use updateOne after create without password:
-    // Workaround: temporarily save a dummy then update — or just insert with Model collection
-    // Cleanest: use User.collection.insertOne to skip mongoose hooks
+    // Use insertOne to bypass Mongoose pre-save hook for the already hashed password
     const result = await User.collection.insertOne({
       name,
       email,
@@ -84,10 +77,12 @@ router.post("/verify-otp", async (req, res) => {
 
     await OTP.deleteMany({ email });
 
-    const createdUser = await User.findById(result.insertedId);
+    // Fetch the newly created user without the password field
+    const createdUser = await User.findById(result.insertedId).select("-password");
+
     res.status(201).json({
       token: generateToken(createdUser._id),
-      user: { _id: createdUser._id, name: createdUser.name, email: createdUser.email, role: createdUser.role },
+      user: createdUser, // ✅ FIXED: Now returns the full user object (including empty bio/pic)
     });
   } catch (err) {
     console.error("Verify OTP error:", err);
@@ -122,24 +117,24 @@ router.post("/login", async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ message: "Email and password required" });
   try {
+    // Select the password here explicitly if your model has `select: false` on it, 
+    // otherwise just finding the user is fine.
     const user = await User.findOne({ email });
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
     if (user.status === "inactive")
       return res.status(403).json({ message: "Account deactivated. Contact admin." });
+
     const match = await user.matchPassword(password);
     if (!match)
       return res.status(401).json({ message: "Invalid email or password" });
+
+    // Fetch the clean user object without the password to send to the frontend
+    const cleanUser = await User.findById(user._id).select("-password");
+
     res.json({
       token: generateToken(user._id),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        bio: user.bio,
-        profilePic: user.profilePic,
-      },
+      user: cleanUser, // ✅ FIXED: Ensures login returns the exact same object shape as /me
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -162,10 +157,13 @@ router.put("/profile", protect, upload.single("profilePic"), async (req, res) =>
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
+
     if (req.body.name) user.name = req.body.name;
     if (req.body.bio !== undefined) user.bio = req.body.bio;
     if (req.file) user.profilePic = req.file.filename;
+
     await user.save();
+
     const updated = await User.findById(user._id).select("-password");
     res.json(updated);
   } catch (err) {
@@ -181,12 +179,14 @@ router.put("/change-password", protect, async (req, res) => {
   if (newPassword.length < 6)
     return res.status(400).json({ message: "New password must be at least 6 characters" });
   try {
-    const user  = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id);
     const match = await user.matchPassword(currentPassword);
     if (!match)
       return res.status(401).json({ message: "Current password is incorrect" });
+
     user.password = newPassword;
-    await user.save();
+    await user.save(); // IMPORTANT: Ensure your User model has a pre('save') hook to hash this new password!
+
     res.json({ message: "Password changed successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
