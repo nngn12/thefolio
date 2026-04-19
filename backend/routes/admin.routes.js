@@ -1,10 +1,10 @@
 // backend/routes/admin.routes.js
 const express = require("express");
-const User    = require("../models/User");
+const User = require("../models/User");
 const Message = require("../models/Message");
-const Post    = require("../models/Post");
+const Post = require("../models/Post");
 
-const { protect }   = require("../middleware/auth.middleware");
+const { protect } = require("../middleware/auth.middleware");
 const { adminOnly } = require("../middleware/role.middleware");
 const { sendReplyEmail } = require("../utils/email");
 
@@ -51,10 +51,11 @@ router.delete('/users/:id', async (req, res) => {
 });
 
 // ── MESSAGES ───────────────────────────────────────────
-router.get("/messages", async (req, res) => {
+// ── POSTS ──────────────────────────────────────────────
+router.get("/posts", async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: -1 });
-    res.json(messages);
+    const posts = await Post.find().sort({ createdAt: -1 });
+    res.json(posts);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -85,8 +86,8 @@ router.post("/messages/:id/reply", async (req, res) => {
 
     // Save reply to DB (visible in user dashboard)
     msg.adminReply = reply.trim();
-    msg.repliedAt  = new Date();
-    msg.read       = true;
+    msg.repliedAt = new Date();
+    msg.read = true;
     await msg.save();
 
     // Send email notification
