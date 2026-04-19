@@ -21,7 +21,7 @@ const AdminPage = () => {
     useEffect(() => {
         if (!user || user.role !== "admin") { navigate("/home"); return; }
 
-        const fetch = async () => {
+        const fetchData = async () => {
             try {
                 const [mRes, pRes, msgRes] = await Promise.all([
                     API.get("/admin/users"),
@@ -29,14 +29,28 @@ const AdminPage = () => {
                     API.get("/admin/messages"),
                 ]);
 
-                // Defensively extract the arrays regardless of how the backend wraps them
-                const fetchedMembers = Array.isArray(mRes.data) ? mRes.data : mRes.data?.data || mRes.data?.users || [];
-                const fetchedPosts = Array.isArray(pRes.data) ? pRes.data : pRes.data?.data || pRes.data?.posts || [];
-                const fetchedMessages = Array.isArray(msgRes.data) ? msgRes.data : msgRes.data?.data || msgRes.data?.messages || [];
+                // 🕵️ DEBUGGING: Let's see exactly what the backend is sending
+                console.log("Raw Members Response:", mRes.data);
+                console.log("Raw Posts Response:", pRes.data);
+                console.log("Raw Messages Response:", msgRes.data);
 
-                setMembers(fetchedMembers);
-                setPosts(fetchedPosts);
-                setMessages(fetchedMessages);
+                // 🛡️ SUPER BULLETPROOF EXTRACTOR
+                // This will hunt down the array no matter how the backend packages it
+                const extractArray = (data, keyword) => {
+                    if (!data) return [];
+                    if (Array.isArray(data)) return data; // If it's already a clean array
+                    if (Array.isArray(data.data)) return data.data; // If it's wrapped in { data: [...] }
+                    if (Array.isArray(data[keyword])) return data[keyword]; // If it's wrapped in { users: [...] }
+
+                    // If it's deeply nested like { success: true, data: { users: [...] } }
+                    if (data.data && Array.isArray(data.data[keyword])) return data.data[keyword];
+
+                    return []; // Safe fallback so .length never crashes
+                };
+
+                setMembers(extractArray(mRes.data, "users"));
+                setPosts(extractArray(pRes.data, "posts"));
+                setMessages(extractArray(msgRes.data, "messages"));
 
             } catch (err) {
                 console.error("Admin fetch error:", err);
@@ -45,7 +59,7 @@ const AdminPage = () => {
             }
         };
 
-        fetch();
+        fetchData();
     }, [user, navigate]);
 
     const toggleStatus = async (id) => {
