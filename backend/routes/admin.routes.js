@@ -50,12 +50,21 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
-// ── MESSAGES ───────────────────────────────────────────
 // ── POSTS ──────────────────────────────────────────────
 router.get("/posts", async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
     res.json(posts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── MESSAGES ───────────────────────────────────────────
+router.get("/messages", async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: -1 });
+    res.json(messages);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
