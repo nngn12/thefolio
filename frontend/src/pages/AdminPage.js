@@ -280,4 +280,26 @@ const AdminPage = () => {
     );
 };
 
+{
+    messages.map((msg) => (
+        <div key={msg._id} className="message-thread">
+            <h4>{msg.subject} from {msg.name}</h4>
+            <p>Initial Message: {msg.message}</p>
+
+            {/* Show the back-and-forth chat */}
+            <div className="replies">
+                {msg.replies.map((r, i) => (
+                    <div key={i} className={r.sender === adminId ? "my-reply" : "user-reply"}>
+                        {r.text}
+                    </div>
+                ))}
+            </div>
+
+            {/* The Reply Box */}
+            <input type="text" id={`reply-${msg._id}`} placeholder="Type your reply..." />
+            <button onClick={() => handleAdminReply(msg._id)}>Send Reply</button>
+        </div>
+    ))
+}
+
 export default AdminPage;
