@@ -12,6 +12,10 @@ const ContactPage = () => {
     const { isDark } = useTheme();
     const { user } = useAuth();
     const t = getTheme(isDark);
+
+    // Determine if user is logged in
+    const isLoggedIn = !!user;
+
     const [formData, setFormData] = useState({ name: user?.name || "", email: user?.email || "", message: "" });
     const [errors, setErrors] = useState({});
     const [sent, setSent] = useState(false);
@@ -19,11 +23,15 @@ const ContactPage = () => {
     const [serverError, setServerError] = useState("");
 
     const emailPattern = /^[^\s]+@[^\s]+\.[a-z]{2,}$/i;
+
     const validate = () => {
         const errs = {};
-        if (!formData.name.trim()) errs.name = "Name is required";
-        if (!formData.email.trim()) errs.email = "Email is required";
-        else if (!emailPattern.test(formData.email)) errs.email = "Invalid email format";
+        // Only validate Name and Email if the user is a guest
+        if (!isLoggedIn) {
+            if (!formData.name.trim()) errs.name = "Name is required";
+            if (!formData.email.trim()) errs.email = "Email is required";
+            else if (!emailPattern.test(formData.email)) errs.email = "Invalid email format";
+        }
         if (!formData.message.trim()) errs.message = "Message cannot be empty";
         return errs;
     };
@@ -34,7 +42,17 @@ const ContactPage = () => {
         if (Object.keys(errs).length > 0) return;
         setSending(true);
         try {
-            await API.post("/admin/messages", formData);
+            if (isLoggedIn) {
+                // Send to protected DB route
+                await API.post("/messages", { message: formData.message });
+            } else {
+                // Send to unprotected Guest route (Email)
+                await API.post("/messages/guest", {
+                    name: formData.name,
+                    email: formData.email,
+                    message: formData.message
+                });
+            }
             setSent(true);
             setFormData(prev => ({ ...prev, message: "" }));
             setTimeout(() => setSent(false), 5000);
@@ -71,7 +89,9 @@ const ContactPage = () => {
                     ) : (
                         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }} noValidate>
                             {serverError && <div style={{ padding: "11px 14px", borderRadius: "8px", background: isDark ? "rgba(190,24,93,0.1)" : "#fef2f2", border: `1px solid rgba(190,24,93,0.2)`, fontSize: "13px", color: t.danger }}>{serverError}</div>}
-                            {[
+
+                            {/* Only render Name and Email inputs if user is NOT logged in */}
+                            {!isLoggedIn && [
                                 { name: "name", label: "Name", type: "text", ph: "Your full name" },
                                 { name: "email", label: "Email", type: "email", ph: "you@example.com" },
                             ].map(f => (
@@ -83,6 +103,8 @@ const ContactPage = () => {
                                     {errors[f.name] && <span style={errorStyle}>{errors[f.name]}</span>}
                                 </div>
                             ))}
+
+                            {/* Message is shown to everyone */}
                             <div>
                                 <label style={labelStyle}>Message</label>
                                 <textarea name="message" placeholder="What's on your mind?" value={formData.message} rows={5}
@@ -90,8 +112,9 @@ const ContactPage = () => {
                                     style={{ ...inputStyle, resize: "vertical", minHeight: "110px", borderColor: errors.message ? t.danger : undefined }} />
                                 {errors.message && <span style={errorStyle}>{errors.message}</span>}
                             </div>
+
                             <button type="submit" disabled={sending} style={{ padding: "13px", borderRadius: "10px", border: "none", background: sending ? t.border : t.pinkGrad, color: "white", fontFamily: t.fontSans, fontWeight: "600", fontSize: "14px", cursor: sending ? "not-allowed" : "pointer", boxShadow: sending ? "none" : "0 4px 16px rgba(190,24,93,0.3)", letterSpacing: "0.04em" }}>
-                                {sending ? "Sending…" : "Send Message"}
+                                {sending ? "Sending…" : (isLoggedIn ? "Send Message Securely" : "Send Email")}
                             </button>
                         </form>
                     )}
