@@ -69,4 +69,23 @@ async function sendReplyEmail(toEmail, toName, originalMessage, replyText) {
   });
 }
 
+// backend/utils/email.js
+
+// ... your existing nodemailer setup ...
+
+const sendGuestMessageEmail = async (guestName, guestEmail, message) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER, // Your authenticated email
+    to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER, // Where you want to receive the messages
+    replyTo: guestEmail, // So you can just hit "Reply" in your inbox to answer them!
+    subject: `New Portfolio Message from Guest: ${guestName}`,
+    text: `You have received a new message from your portfolio guest contact form.\n\nName: ${guestName}\nEmail: ${guestEmail}\n\nMessage:\n${message}`
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+// Don't forget to export it at the bottom!
+module.exports = { sendOTPEmail, sendGuestMessageEmail };
+
 module.exports = { sendOTPEmail, sendReplyEmail };

@@ -1,9 +1,9 @@
 // backend/routes/message.routes.js
 const express = require("express");
 const Message = require("../models/Message");
-const User    = require("../models/User");
+const User = require("../models/User");
 const { protect } = require("../middleware/auth.middleware");
-const router  = express.Router();
+const router = express.Router();
 
 // POST /api/messages — anyone can send (guest or member)
 router.post("/", async (req, res) => {
@@ -41,6 +41,29 @@ router.get("/my", protect, async (req, res) => {
     res.json(messages);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// backend/routes/message.routes.js
+// Make sure to import your email utility at the top of the file!
+// const { sendGuestMessageEmail } = require("../utils/email");
+
+// POST /api/messages/guest — Unprotected route for non-logged in users
+router.post("/guest", async (req, res) => {
+  const { name, email, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: "Name, email, and message are required." });
+  }
+
+  try {
+    // Call your email utility to send this to YOUR admin email
+    await sendGuestMessageEmail(name, email, message);
+
+    res.status(200).json({ message: "Your message has been sent to the admin!" });
+  } catch (error) {
+    console.error("Guest email error:", error);
+    res.status(500).json({ message: "Failed to send message. Please try again later." });
   }
 });
 
