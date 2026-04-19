@@ -37,7 +37,10 @@ const ContactPage = () => {
         if (Object.keys(errs).length > 0) return;
         setSending(true);
         try {
-            await API.post("/admin/messages", formData);
+            // ✅ FIXED: Changed from "/admin/messages" to a public route "/messages"
+            // If your backend uses something else like "/contact", change it here!
+            await API.post("/messages", formData);
+
             setSent(true);
             setFormData(prev => ({ ...prev, message: "" }));
             setTimeout(() => setSent(false), 5000);
@@ -101,14 +104,11 @@ const ContactPage = () => {
                 <div style={card}>
                     <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "22px", fontWeight: "400", color: t.text, marginBottom: "8px" }}>Location</h3>
                     <p style={{ fontSize: "13px", color: t.textMuted, marginBottom: "16px" }}>General location for reference only.</p>
-
-                    {/* ✅ UPDATED IMAGE PATH: Use Option 1 (Public Folder) if BASE_URL fails */}
                     <img
                         src={`${BASE_URL}/uploads/map.png`}
                         alt="Map"
                         style={{ width: "100%", borderRadius: "10px", border: `1px solid ${t.border}` }}
                         onError={(e) => {
-                            // If backend fetch fails, try local public folder
                             if (e.target.src !== window.location.origin + "/map.png") {
                                 e.target.src = "/map.png";
                             } else {
