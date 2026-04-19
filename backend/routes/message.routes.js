@@ -3,6 +3,10 @@ const express = require("express");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const { protect } = require("../middleware/auth.middleware");
+
+// Make sure to import your email utility if you are using it!
+// const { sendGuestMessageEmail } = require("../utils/email");
+
 const router = express.Router();
 
 // POST /api/messages — anyone can send (guest or member)
@@ -44,11 +48,7 @@ router.get("/my", protect, async (req, res) => {
   }
 });
 
-// backend/routes/message.routes.js
-// Make sure to import your email utility at the top of the file!
-// const { sendGuestMessageEmail } = require("../utils/email");
-
-// POST /api/messages/guest — Unprotected route for non-logged in users
+// POST /api/messages/guest — Unprotected route for non-logged in users (UPDATED)
 router.post("/guest", async (req, res) => {
   const { name, email, message } = req.body;
 
@@ -57,10 +57,23 @@ router.post("/guest", async (req, res) => {
   }
 
   try {
-    // Call your email utility to send this to YOUR admin email
-    await sendGuestMessageEmail(name, email, message);
+    // 1. Try to see if this guest email actually belongs to a registered user
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
-    res.status(200).json({ message: "Your message has been sent to the admin!" });
+    // 2. Save it to MongoDB so the Dashboards can see it!
+    const msg = await Message.create({
+      name,
+      email: email.toLowerCase().trim(),
+      message,
+      userId: user ? user._id : null, // Link it if they have an account
+    });
+
+    // 3. Send the email notification
+    if (typeof sendGuestMessageEmail === 'function') {
+      await sendGuestMessageEmail(name, email, message);
+    }
+
+    res.status(200).json({ message: "Your message has been sent!", data: msg });
   } catch (error) {
     console.error("Guest email error:", error);
     res.status(500).json({ message: "Failed to send message. Please try again later." });
