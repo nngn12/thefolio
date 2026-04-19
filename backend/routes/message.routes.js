@@ -10,24 +10,42 @@ const { protect } = require("../middleware/auth.middleware");
 const router = express.Router();
 
 // POST /api/messages — anyone can send (guest or member)
-router.post("/", async (req, res) => {
+// POST /api/messages/send — User starts a chat with Admin
+router.post("/send", protect, async (req, res) => {
   try {
-    const { name, email, message } = req.body;
-    if (!name || !email || !message)
-      return res.status(400).json({ message: "All fields are required" });
+    // 1. Find an Admin to receive the message (or a specific one)
+    const admin = await User.findOne({ role: 'admin' });
 
-    // Try to link to a registered user
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
-
-    const msg = await Message.create({
-      name,
-      email,
-      message,
-      userId: user ? user._id : null,
+    const newMessage = await Message.create({
+      sender: req.user._id,   // Current logged-in user
+      receiver: admin._id,    // The Admin
+      name: req.user.name,
+      email: req.user.email,
+      subject: req.body.subject,
+      message: req.body.message
     });
-    res.status(201).json({ message: "Message sent!", data: msg });
+    res.status(201).json(newMessage);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/messages/:id/reply — For BOTH User and Admin
+router.post("/:id/reply", protect, async (req, res) => {
+  try {
+    const msg = await Message.findById(req.params.id);
+    if (!msg) return res.status(404).json({ message: "Chat not found" });
+
+    // Push the new reply into the array we created in the model
+    msg.replies.push({
+      sender: req.user._id,
+      text: req.body.text
+    });
+
+    await msg.save();
+    res.json(msg);
+  } catch (err) {
+    res.status(500).json({ message: "Reply failed" });
   }
 });
 
