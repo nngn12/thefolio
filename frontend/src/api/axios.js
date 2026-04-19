@@ -1,14 +1,18 @@
-// frontend/src/api/axios.js
 import axios from 'axios';
 
+// Dynamically choose the URL based on the environment
+const API_URL = process.env.NODE_ENV === 'production'
+    ? 'https://thefolio-lw3l.onrender.com/api'
+    : 'http://localhost:5000/api';
+
 const instance = axios.create({
-    // Use env variable in production, fallback to localhost for dev
-    baseURL: 'https://thefolio-lw3l.onrender.com//api',
+    baseURL: API_URL,
 });
 
 instance.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
-}); export default
-    instance;
+});
+
+export default instance;
