@@ -21,13 +21,18 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.error("CORS blocked origin:", origin);
-    return callback(new Error("Not allowed by CORS"));
+
+    // Allow localhost OR any vercel.app subdomain
+    if (origin === "http://localhost:3000" || origin.endsWith("vercel.app")) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
   },
-  credentials: true,
+  credentials: true
 }));
 
 app.use(express.json());
