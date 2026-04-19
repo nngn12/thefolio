@@ -7,19 +7,29 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
 
-    // On startup: verify token is still valid & get fresh user data
+    // On startup: verify token & get fresh user data
     useEffect(() => {
         const init = async () => {
             const token = localStorage.getItem("token");
-            if (!token) { setAuthLoading(false); return; }
+            const storedUser = localStorage.getItem("user");
+
+            // Pre-fill state from storage to prevent "Unknown" flashes during refresh
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+
+            if (!token) {
+                setAuthLoading(false);
+                return;
+            }
+
             try {
                 const res = await API.get("/auth/me");
                 setUser(res.data);
                 localStorage.setItem("user", JSON.stringify(res.data));
-            } catch {
+            } catch (err) {
                 // Token expired or invalid — clear everything
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
+                logout();
             } finally {
                 setAuthLoading(false);
             }
@@ -42,20 +52,21 @@ export const AuthProvider = ({ children }) => {
 
     const register = async ({ name, email, password }) => {
         try {
+            // Note: register in your backend logic sends OTP first, 
+            // so this should match your frontend flow (VerifyOTP page)
             const res = await API.post("/auth/register", { name, email, password });
-            const { token, user: userData } = res.data;
-            setUser(userData);
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", JSON.stringify(userData));
-            return { success: true };
+            return { success: true, message: res.data.message };
         } catch (err) {
             return { success: false, message: err.response?.data?.message || "Registration failed" };
         }
     };
 
-    const updateUser = (updatedUser) => {
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+    // This handles the persistent update you need for profile pictures
+    const updateUser = (updatedData) => {
+        // Ensure we are saving the correct user object if backend wraps it
+        const newUser = updatedData.user ? updatedData.user : updatedData;
+        setUser(newUser);
+        localStorage.setItem("user", JSON.stringify(newUser));
     };
 
     const logout = () => {
