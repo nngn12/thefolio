@@ -1,197 +1,177 @@
-// src/pages/ProfilePage.js
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import API from '../api/axios';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import { getTheme } from "../theme";
+import API from "../api/axios";
 
-function ProfilePage() {
-  const { user, setUser } = useAuth();
-  const [name, setName]             = useState('');
-  const [bio, setBio]               = useState('');
-  const [pic, setPic]               = useState(null);
-  const [picPreview, setPicPreview] = useState(null);
-  const [curPw, setCurPw]           = useState('');
-  const [newPw, setNewPw]           = useState('');
-  const [msg, setMsg]               = useState('');
-  const [msgType, setMsgType]       = useState('success');
-  const [myPosts, setMyPosts]       = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [showEditProfile, setShowEditProfile]       = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
+const BASE_URL = process.env.REACT_APP_API_URL
+    ? process.env.REACT_APP_API_URL.replace('/api', '')
+    : 'http://localhost:5000';
 
-  useEffect(() => {
-    if (user) { setName(user.name || ''); setBio(user.bio || ''); }
-  }, [user]);
+const ProfilePage = () => {
+    const navigate = useNavigate();
+    const { user, updateUser } = useAuth();
+    const { isDark } = useTheme();
+    const t = getTheme(isDark);
 
-  useEffect(() => {
-    API.get('/posts/mine')
-      .then(r => setMyPosts(r.data))
-      .catch(err => console.error('Posts/mine error:', err.response?.data))
-      .finally(() => setPostsLoading(false));
-  }, []);
+    const [name, setName] = useState("");
+    const [bio, setBio] = useState("");
+    const [pic, setPic] = useState(null);
+    const [picPreview, setPicPreview] = useState(null);
+    const [curPw, setCurPw] = useState("");
+    const [newPw, setNewPw] = useState("");
+    const [myPosts, setMyPosts] = useState([]);
+    const [postsLoading, setPostsLoading] = useState(true);
+    const [msg, setMsg] = useState("");
+    const [msgType, setMsgType] = useState("success");
+    const [showEditProfile, setShowEditProfile] = useState(false);
+    const [showChangePassword, setShowChangePassword] = useState(false);
 
-  const flash = (text, type = 'success') => {
-    setMsg(text); setMsgType(type);
-    setTimeout(() => setMsg(''), 4000);
-  };
+    useEffect(() => {
+        if (!user) { navigate("/login"); return; }
+        setName(user.name || "");
+        setBio(user.bio || "");
+        API.get("/posts/mine").then(r => setMyPosts(Array.isArray(r.data) ? r.data : []))
+            .catch(() => setMyPosts([]))
+            .finally(() => setPostsLoading(false));
+    }, [user, navigate]);
 
-  const handlePicChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPic(file);
-    setPicPreview(URL.createObjectURL(file));
-  };
+    const flash = (text, type = "success") => {
+        setMsg(text); setMsgType(type);
+        setTimeout(() => setMsg(""), 4000);
+    };
 
-  const handleProfile = async (e) => {
-    e.preventDefault();
-    const fd = new FormData();
-    fd.append('name', name);
-    fd.append('bio', bio);
-    if (pic) fd.append('profilePic', pic);
-    try {
-      const { data } = await API.put('/auth/profile', fd);
-      setUser(data); setPic(null);
-      flash('Profile updated successfully!');
-      setShowEditProfile(false);
-    } catch (err) {
-      flash(err.response?.data?.message || 'Update failed', 'error');
-    }
-  };
+    const handleProfile = async (e) => {
+        e.preventDefault();
+        try {
+            const fd = new FormData();
+            fd.append("name", name);
+            fd.append("bio", bio);
+            if (pic) fd.append("profilePic", pic);
+            const res = await API.put("/auth/profile", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            if (updateUser) updateUser(res.data);
+            setPic(null);
+            flash("Profile updated! 🌸");
+            setShowEditProfile(false);
+        } catch (err) {
+            flash(err.response?.data?.message || "Update failed", "error");
+        }
+    };
 
-  const handlePassword = async (e) => {
-    e.preventDefault();
-    if (newPw.length < 6) { flash('New password must be at least 6 characters', 'error'); return; }
-    try {
-      await API.put('/auth/change-password', { currentPassword: curPw, newPassword: newPw });
-      flash('Password changed successfully!');
-      setCurPw(''); setNewPw('');
-      setShowChangePassword(false);
-    } catch (err) {
-      flash(err.response?.data?.message || 'Password change failed', 'error');
-    }
-  };
+    const handlePassword = async (e) => {
+        e.preventDefault();
+        if (newPw.length < 6) { flash("New password must be at least 6 characters", "error"); return; }
+        try {
+            await API.put("/auth/change-password", { currentPassword: curPw, newPassword: newPw });
+            flash("Password changed successfully! 🔒");
+            setCurPw(""); setNewPw("");
+            setShowChangePassword(false);
+        } catch (err) {
+            flash(err.response?.data?.message || "Password change failed", "error");
+        }
+    };
 
-  const picSrc = picPreview
-    ? picPreview
-    : user?.profilePic
-    ? `https://thefolio-of34.onrender.com/uploads/${user.profilePic}`
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=081730&color=fff&size=128`;
+    const picSrc = picPreview
+        || (user?.profile_pic ? `${BASE_URL}/uploads/${user.profile_pic}` : null);
 
-  if (!user) return <div className="loading-spinner">Loading...</div>;
+    const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: `1px solid ${t.border}`, fontSize: "14px", fontFamily: t.fontSans, background: t.input, color: t.text, outline: "none", boxSizing: "border-box", marginBottom: "14px" };
+    const labelStyle = { display: "block", fontSize: "12px", fontWeight: "500", letterSpacing: "0.06em", textTransform: "uppercase", color: t.textMuted, marginBottom: "6px" };
 
-  return (
-    <div className="profile-page">
-
-      {/* ── Hero Banner ── */}
-      <div className="profile-hero-banner">
-        <img src={picSrc} alt="Profile" className="profile-hero-avatar" />
-        <div>
-          <p className="profile-hero-name">{user.name}</p>
-          <p className="profile-hero-bio">{user.bio || 'No bio yet.'}</p>
-          <p className="profile-hero-email">{user.email}</p>
-          {user.role === 'admin' && <span className="badge-admin">Admin</span>}
-        </div>
-      </div>
-
-      {/* ── Flash ── */}
-      {msg && <div className={`profile-flash ${msgType}`}>{msg}</div>}
-
-      {/* ── My Posts ── */}
-      <div className="profile-card">
-        <div className="profile-card-header">
-          <span>📝</span>
-          <h3>My Posts</h3>
-        </div>
-
-        {postsLoading ? (
-          <div className="my-post-row">
-            <span style={{ color: 'var(--text-3)' }}>Loading posts...</span>
-          </div>
-        ) : myPosts.length === 0 ? (
-          <div className="my-post-row">
-            <span style={{ color: 'var(--text-3)' }}>
-              No posts yet.{' '}
-              <Link to="/create-post">Write your first one!</Link>
-            </span>
-          </div>
-        ) : (
-          myPosts.map(p => (
-            <div key={p._id} className="my-post-row">
-              <Link to={`/posts/${p._id}`}>{p.title}</Link>
-              <span>
-                {new Date(p.createdAt).toLocaleDateString('en-US', {
-                  month: 'short', day: 'numeric', year: 'numeric',
-                })}
-              </span>
+    return (
+        <div style={{ fontFamily: t.fontSans, background: t.bg, minHeight: "100vh", paddingBottom: "80px" }}>
+            {/* Hero Banner */}
+            <div style={{ borderBottom: `1px solid ${t.border}`, background: isDark ? "rgba(190,24,93,0.03)" : "rgba(190,24,93,0.02)", padding: "40px 24px" }}>
+                <div style={{ maxWidth: "680px", margin: "0 auto", display: "flex", alignItems: "center", gap: "24px" }}>
+                    <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: t.pinkGrad, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "28px", fontWeight: "700", overflow: "hidden", boxShadow: "0 4px 20px rgba(190,24,93,0.25)" }}>
+                        {picSrc ? <img src={picSrc} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : user?.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                        <h1 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "28px", fontWeight: "400", color: t.text, margin: "0 0 4px" }}>{user?.name}</h1>
+                        <p style={{ fontSize: "13px", color: t.textSub, margin: "0 0 4px", lineHeight: "1.5" }}>{user?.bio || "No bio yet."}</p>
+                        <p style={{ fontSize: "12px", color: t.textMuted, margin: 0 }}>{user?.email}</p>
+                        {user?.role === "admin" && <span style={{ display: "inline-block", marginTop: "6px", padding: "3px 10px", borderRadius: "12px", background: t.pinkGrad, color: "white", fontSize: "11px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Admin</span>}
+                    </div>
+                </div>
             </div>
-          ))
-        )}
-      </div>
 
-      {/* ── Edit Profile (collapsible) ── */}
-      <div className="profile-card">
-        <button
-          className="panel-toggle"
-          onClick={() => setShowEditProfile(v => !v)}
-          aria-expanded={showEditProfile}
-        >
-          <h3>✏️ Edit Profile</h3>
-          <span className={`toggle-icon${showEditProfile ? ' open' : ''}`}>▾</span>
-        </button>
+            <div style={{ maxWidth: "680px", margin: "0 auto", padding: "36px 24px 0" }}>
+                {/* Flash message */}
+                {msg && (
+                    <div style={{ padding: "12px 16px", borderRadius: "10px", marginBottom: "24px", background: msgType === "success" ? (isDark ? "rgba(16,185,129,0.1)" : "#d1fae5") : (isDark ? "rgba(190,24,93,0.1)" : "#fef2f2"), border: `1px solid ${msgType === "success" ? "rgba(16,185,129,0.3)" : "rgba(190,24,93,0.2)"}`, fontSize: "13px", color: msgType === "success" ? t.success : t.danger }}>
+                        {msg}
+                    </div>
+                )}
 
-        {showEditProfile && (
-          <div className="panel-body">
-            <form onSubmit={handleProfile}>
-              <label>Display Name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your display name" />
+                {/* My Posts */}
+                <div style={{ background: t.card, borderRadius: "16px", padding: "24px 28px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, marginBottom: "16px" }}>
+                    <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "22px", fontWeight: "400", color: t.text, marginBottom: "20px" }}>📸 My Posts ({myPosts.length})</h3>
+                    {postsLoading ? (
+                        <p style={{ color: t.textMuted, fontSize: "14px" }}>Loading…</p>
+                    ) : myPosts.length === 0 ? (
+                        <p style={{ color: t.textMuted, fontSize: "14px" }}>No posts yet. <Link to="/create" style={{ color: t.pink, textDecoration: "none", fontWeight: "500" }}>Write your first one!</Link></p>
+                    ) : (
+                        myPosts.map(p => (
+                            <div key={p.id || p._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${t.border}`, padding: "12px 0" }}>
+                                <Link to={`/post/${p.id || p._id}`} style={{ fontSize: "14px", fontWeight: "600", color: t.text, textDecoration: "none" }}>{p.title}</Link>
+                                <div style={{ display: "flex", gap: "12px" }}>
+                                    <Link to={`/post/${p.id || p._id}`} style={{ fontSize: "12px", color: t.pink, textDecoration: "none", fontWeight: "500" }}>View →</Link>
+                                    <Link to={`/edit/${p.id || p._id}`} style={{ fontSize: "12px", color: t.textMuted, textDecoration: "none" }}>Edit</Link>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
 
-              <label>Bio</label>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about yourself..." rows={3} />
+                {/* Edit Profile — Collapsible */}
+                <div style={{ background: t.card, borderRadius: "16px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, marginBottom: "16px", overflow: "hidden" }}>
+                    <button onClick={() => setShowEditProfile(v => !v)} style={{ width: "100%", padding: "22px 28px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: t.fontSans }}>
+                        <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "20px", fontWeight: "400", color: t.text, margin: 0 }}>✏️ Edit Profile</h3>
+                        <span style={{ fontSize: "18px", color: t.textMuted, transform: showEditProfile ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>▾</span>
+                    </button>
+                    {showEditProfile && (
+                        <div style={{ padding: "0 28px 28px", borderTop: `1px solid ${t.border}` }}>
+                            <form onSubmit={handleProfile} style={{ marginTop: "20px" }}>
+                                <label style={labelStyle}>Display Name</label>
+                                <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" style={inputStyle} />
+                                <label style={labelStyle}>Bio</label>
+                                <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell something about yourself…" style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }} />
+                                <label style={labelStyle}>Profile Picture</label>
+                                <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setPic(f); setPicPreview(URL.createObjectURL(f)); } }} style={{ marginBottom: "14px", color: t.textSub, fontSize: "13px" }} />
+                                {picPreview && <img src={picPreview} alt="Preview" style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover", marginBottom: "14px", border: `2px solid ${t.border}` }} />}
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button type="submit" style={{ padding: "11px 28px", borderRadius: "10px", border: "none", background: t.pinkGrad, color: "white", fontFamily: t.fontSans, fontWeight: "600", cursor: "pointer", boxShadow: "0 3px 12px rgba(190,24,93,0.25)" }}>Save Changes</button>
+                                    <button type="button" onClick={() => setShowEditProfile(false)} style={{ padding: "11px 22px", borderRadius: "10px", border: `1px solid ${t.border}`, background: "transparent", color: t.textSub, fontFamily: t.fontSans, cursor: "pointer" }}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
 
-              <label>Profile Picture</label>
-              <input type="file" accept="image/*" onChange={handlePicChange} />
-              {picPreview && <img src={picPreview} alt="Preview" className="panel-pic-preview" />}
-
-              <div className="panel-btn-row">
-                <button type="submit" className="btn btn-primary">Save Changes</button>
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditProfile(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-      {/* ── Change Password (collapsible) ── */}
-      <div className="profile-card">
-        <button
-          className="panel-toggle"
-          onClick={() => setShowChangePassword(v => !v)}
-          aria-expanded={showChangePassword}
-        >
-          <h3>🔒 Change Password</h3>
-          <span className={`toggle-icon${showChangePassword ? ' open' : ''}`}>▾</span>
-        </button>
-
-        {showChangePassword && (
-          <div className="panel-body">
-            <form onSubmit={handlePassword}>
-              <label>Current Password</label>
-              <input type="password" placeholder="Enter current password" value={curPw} onChange={e => setCurPw(e.target.value)} required />
-
-              <label>New Password</label>
-              <input type="password" placeholder="Min 6 characters" value={newPw} onChange={e => setNewPw(e.target.value)} required minLength={6} />
-
-              <div className="panel-btn-row">
-                <button type="submit" className="btn btn-primary">Update Password</button>
-                <button type="button" className="btn btn-outline" onClick={() => setShowChangePassword(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-    </div>
-  );
-}
+                {/* Change Password — Collapsible */}
+                <div style={{ background: t.card, borderRadius: "16px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, overflow: "hidden" }}>
+                    <button onClick={() => setShowChangePassword(v => !v)} style={{ width: "100%", padding: "22px 28px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: t.fontSans }}>
+                        <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "20px", fontWeight: "400", color: t.text, margin: 0 }}>🔒 Change Password</h3>
+                        <span style={{ fontSize: "18px", color: t.textMuted, transform: showChangePassword ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>▾</span>
+                    </button>
+                    {showChangePassword && (
+                        <div style={{ padding: "0 28px 28px", borderTop: `1px solid ${t.border}` }}>
+                            <form onSubmit={handlePassword} style={{ marginTop: "20px" }}>
+                                <label style={labelStyle}>Current Password</label>
+                                <input type="password" value={curPw} onChange={e => setCurPw(e.target.value)} placeholder="Enter current password" required style={inputStyle} />
+                                <label style={labelStyle}>New Password</label>
+                                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min 6 characters" required minLength={6} style={inputStyle} />
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button type="submit" style={{ padding: "11px 28px", borderRadius: "10px", border: "none", background: t.pinkGrad, color: "white", fontFamily: t.fontSans, fontWeight: "600", cursor: "pointer", boxShadow: "0 3px 12px rgba(190,24,93,0.25)" }}>Update Password</button>
+                                    <button type="button" onClick={() => setShowChangePassword(false)} style={{ padding: "11px 22px", borderRadius: "10px", border: `1px solid ${t.border}`, background: "transparent", color: t.textSub, fontFamily: t.fontSans, cursor: "pointer" }}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default ProfilePage;
