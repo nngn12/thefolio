@@ -51,19 +51,16 @@ const ProfilePage = () => {
             const fd = new FormData();
             fd.append("name", name);
             fd.append("bio", bio);
-            // 'profilePic' must match the key in your backend upload middleware
             if (pic) fd.append("profilePic", pic);
 
             const res = await API.put("/auth/profile", fd, {
                 headers: { "Content-Type": "multipart/form-data" }
             });
 
-            // ✅ This calls the new updateUser logic in AuthContext to persist to LocalStorage
             if (updateUser) {
                 updateUser(res.data);
             }
 
-            // ✅ Reset local file states so the UI switches back to the server-hosted image
             setPic(null);
             setPicPreview(null);
 
@@ -87,7 +84,6 @@ const ProfilePage = () => {
         }
     };
 
-    // Prioritize the preview if the user just selected a file, otherwise use the stored pic
     const picSrc = picPreview
         ? picPreview
         : (user?.profilePic ? `${BASE_URL}/uploads/${user.profilePic}` : null);
@@ -97,6 +93,7 @@ const ProfilePage = () => {
 
     return (
         <div style={{ fontFamily: t.fontSans, background: t.bg, minHeight: "100vh", paddingBottom: "80px" }}>
+            {/* Hero Banner */}
             <div style={{ borderBottom: `1px solid ${t.border}`, background: isDark ? "rgba(190,24,93,0.03)" : "rgba(190,24,93,0.02)", padding: "40px 24px" }}>
                 <div style={{ maxWidth: "680px", margin: "0 auto", display: "flex", alignItems: "center", gap: "24px" }}>
                     <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: t.pinkGrad, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "28px", fontWeight: "700", overflow: "hidden", boxShadow: "0 4px 20px rgba(190,24,93,0.25)", border: `2px solid ${t.bg}` }}>
@@ -111,12 +108,14 @@ const ProfilePage = () => {
             </div>
 
             <div style={{ maxWidth: "680px", margin: "0 auto", padding: "36px 24px 0" }}>
+                {/* Flash message */}
                 {msg && (
                     <div style={{ padding: "12px 16px", borderRadius: "10px", marginBottom: "24px", background: msgType === "success" ? (isDark ? "rgba(16,185,129,0.1)" : "#d1fae5") : (isDark ? "rgba(190,24,93,0.1)" : "#fef2f2"), border: `1px solid ${msgType === "success" ? "rgba(16,185,129,0.3)" : "rgba(190,24,93,0.2)"}`, fontSize: "13px", color: msgType === "success" ? t.success : t.danger }}>
                         {msg}
                     </div>
                 )}
 
+                {/* My Posts */}
                 <div style={{ background: t.card, borderRadius: "16px", padding: "24px 28px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, marginBottom: "16px" }}>
                     <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "22px", fontWeight: "400", color: t.text, marginBottom: "20px" }}>📸 My Posts ({myPosts.length})</h3>
                     {postsLoading ? (
@@ -136,6 +135,7 @@ const ProfilePage = () => {
                     )}
                 </div>
 
+                {/* Edit Profile — Collapsible */}
                 <div style={{ background: t.card, borderRadius: "16px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, marginBottom: "16px", overflow: "hidden" }}>
                     <button onClick={() => setShowEditProfile(v => !v)} style={{ width: "100%", padding: "22px 28px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: t.fontSans }}>
                         <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "20px", fontWeight: "400", color: t.text, margin: 0 }}>✏️ Edit Profile</h3>
@@ -160,6 +160,28 @@ const ProfilePage = () => {
                                 <div style={{ display: "flex", gap: "10px" }}>
                                     <button type="submit" style={{ padding: "11px 28px", borderRadius: "10px", border: "none", background: t.pinkGrad, color: "white", fontFamily: t.fontSans, fontWeight: "600", cursor: "pointer", boxShadow: "0 3px 12px rgba(190,24,93,0.25)" }}>Save Changes</button>
                                     <button type="button" onClick={() => { setShowEditProfile(false); setPicPreview(null); }} style={{ padding: "11px 22px", borderRadius: "10px", border: `1px solid ${t.border}`, background: "transparent", color: t.textSub, fontFamily: t.fontSans, cursor: "pointer" }}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+
+                {/* Change Password — Collapsible */}
+                <div style={{ background: t.card, borderRadius: "16px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, overflow: "hidden" }}>
+                    <button onClick={() => setShowChangePassword(v => !v)} style={{ width: "100%", padding: "22px 28px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: t.fontSans }}>
+                        <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "20px", fontWeight: "400", color: t.text, margin: 0 }}>🔒 Change Password</h3>
+                        <span style={{ fontSize: "18px", color: t.textMuted, transform: showChangePassword ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>▾</span>
+                    </button>
+                    {showChangePassword && (
+                        <div style={{ padding: "0 28px 28px", borderTop: `1px solid ${t.border}` }}>
+                            <form onSubmit={handlePassword} style={{ marginTop: "20px" }}>
+                                <label style={labelStyle}>Current Password</label>
+                                <input type="password" value={curPw} onChange={e => setCurPw(e.target.value)} placeholder="Enter current password" required style={inputStyle} />
+                                <label style={labelStyle}>New Password</label>
+                                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min 6 characters" required minLength={6} style={inputStyle} />
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button type="submit" style={{ padding: "11px 28px", borderRadius: "10px", border: "none", background: t.pinkGrad, color: "white", fontFamily: t.fontSans, fontWeight: "600", cursor: "pointer", boxShadow: "0 3px 12px rgba(190,24,93,0.25)" }}>Update Password</button>
+                                    <button type="button" onClick={() => setShowChangePassword(false)} style={{ padding: "11px 22px", borderRadius: "10px", border: `1px solid ${t.border}`, background: "transparent", color: t.textSub, fontFamily: t.fontSans, cursor: "pointer" }}>Cancel</button>
                                 </div>
                             </form>
                         </div>
