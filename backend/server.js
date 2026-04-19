@@ -1,4 +1,3 @@
-// backend/server.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -17,8 +16,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://thefolio-taupe.vercel.app/", // ← your Vercel URL
-  process.env.FRONTEND_URL,            // ← fallback from Render env var
+  "https://thefolio-taupe.vercel.app",
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
@@ -47,14 +46,13 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({ message: err.message || "Server Error" });
 });
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  // Add backticks around the string
   console.log(`Server running on port ${PORT}`);
 
-  // Keep Render free tier awake (pings itself every 10 min)
   setInterval(() => {
-    fetch(`https://thefolio-lw3l.onrender.com/`)
+    fetch("https://thefolio-lw3l.onrender.com/")
       .catch(() => { });
   }, 10 * 60 * 1000);
 });
