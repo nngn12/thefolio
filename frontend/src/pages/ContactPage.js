@@ -4,9 +4,10 @@ import { useAuth } from "../context/AuthContext";
 import { getTheme } from "../theme";
 import API from "../api/axios";
 
+// Cleaned up BASE_URL to prevent double slashes
 const BASE_URL = process.env.REACT_APP_API_URL
-    ? process.env.REACT_APP_API_URL.replace('/api', '')
-    : 'https://thefolio-lw3l.onrender.com/';
+    ? process.env.REACT_APP_API_URL.replace('/api', '').replace(/\/$/, '')
+    : 'https://thefolio-lw3l.onrender.com';
 
 const ContactPage = () => {
     const { isDark } = useTheme();
@@ -29,8 +30,10 @@ const ContactPage = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault(); setServerError("");
-        const errs = validate(); setErrors(errs);
+        e.preventDefault();
+        setServerError("");
+        const errs = validate();
+        setErrors(errs);
         if (Object.keys(errs).length > 0) return;
         setSending(true);
         try {
@@ -51,7 +54,6 @@ const ContactPage = () => {
     };
     const labelStyle = { display: "block", fontSize: "12px", fontWeight: "500", letterSpacing: "0.06em", textTransform: "uppercase", color: t.textMuted, marginBottom: "6px" };
     const errorStyle = { fontSize: "12px", color: t.danger, marginTop: "4px", display: "block" };
-
     const card = { background: t.card, borderRadius: "16px", padding: "32px", boxShadow: t.shadowSm, border: `1px solid ${t.border}`, marginBottom: "24px" };
 
     return (
@@ -61,7 +63,6 @@ const ContactPage = () => {
                 <h1 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "40px", fontWeight: "400", color: t.text, marginBottom: "8px" }}>Contact Us</h1>
                 <p style={{ fontSize: "14px", color: t.textMuted, marginBottom: "40px" }}>Have a question or just want to say hello? We'd love to hear from you.</p>
 
-                {/* Contact Form */}
                 <div style={card}>
                     {sent ? (
                         <div style={{ padding: "20px", borderRadius: "12px", background: isDark ? "rgba(16,185,129,0.1)" : "#d1fae5", border: "1px solid rgba(16,185,129,0.3)", textAlign: "center" }}>
@@ -97,39 +98,24 @@ const ContactPage = () => {
                     )}
                 </div>
 
-                {/* Resources Table */}
-                <div style={card}>
-                    <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "22px", fontWeight: "400", color: t.text, marginBottom: "20px" }}>Web Dev Resources</h3>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                        <thead>
-                            <tr style={{ borderBottom: `1px solid ${t.border}` }}>
-                                <th style={{ textAlign: "left", padding: "8px 12px 12px", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase", color: t.textMuted }}>Resource</th>
-                                <th style={{ textAlign: "left", padding: "8px 12px 12px", fontSize: "11px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase", color: t.textMuted }}>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {[
-                                { href: "https://developer.mozilla.org", name: "MDN Web Docs", desc: "Authoritative reference for HTML, CSS and JavaScript" },
-                                { href: "https://www.w3schools.com", name: "W3Schools", desc: "Beginner-friendly tutorials and live examples" },
-                                { href: "https://www.freecodecamp.org", name: "freeCodeCamp", desc: "Free interactive curriculum for web technologies" },
-                                { href: "https://css-tricks.com", name: "CSS-Tricks", desc: "Deep dives into CSS and modern techniques" },
-                            ].map((r, i) => (
-                                <tr key={r.name} style={{ borderBottom: i < 3 ? `1px solid ${t.border}` : "none" }}>
-                                    <td style={{ padding: "14px 12px" }}>
-                                        <a href={r.href} target="_blank" rel="noreferrer" style={{ color: t.pink, fontWeight: "500", textDecoration: "none" }}>{r.name}</a>
-                                    </td>
-                                    <td style={{ padding: "14px 12px", color: t.textSub }}>{r.desc}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Map */}
                 <div style={card}>
                     <h3 style={{ fontFamily: t.fontSerif, fontStyle: "italic", fontSize: "22px", fontWeight: "400", color: t.text, marginBottom: "8px" }}>Location</h3>
                     <p style={{ fontSize: "13px", color: t.textMuted, marginBottom: "16px" }}>General location for reference only.</p>
-                    <img src={`${BASE_URL}/uploads/map.png`} alt="Map" style={{ width: "100%", borderRadius: "10px" }} onError={e => e.target.style.display = "none"} />
+
+                    {/* ✅ UPDATED IMAGE PATH: Use Option 1 (Public Folder) if BASE_URL fails */}
+                    <img
+                        src={`${BASE_URL}/uploads/map.png`}
+                        alt="Map"
+                        style={{ width: "100%", borderRadius: "10px", border: `1px solid ${t.border}` }}
+                        onError={(e) => {
+                            // If backend fetch fails, try local public folder
+                            if (e.target.src !== window.location.origin + "/map.png") {
+                                e.target.src = "/map.png";
+                            } else {
+                                e.target.style.display = "none";
+                            }
+                        }}
+                    />
                 </div>
             </div>
         </div>
