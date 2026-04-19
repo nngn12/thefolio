@@ -5,6 +5,11 @@ import { useTheme } from "../context/ThemeContext";
 import { getTheme } from "../theme";
 import API from "../api/axios";
 
+// Consistent BASE_URL logic
+const BASE_URL = process.env.REACT_APP_API_URL
+    ? process.env.REACT_APP_API_URL.replace('/api', '')
+    : 'https://thefolio-lw3l.onrender.com';
+
 const EditPostPage = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -14,8 +19,8 @@ const EditPostPage = () => {
 
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
-    const [images, setImages] = useState([]); // new images
-    const [existingImages, setExistingImages] = useState([]); // already saved images
+    const [images, setImages] = useState([]); // new files
+    const [existingImages, setExistingImages] = useState([]); // strings from DB
     const [previews, setPreviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -26,7 +31,10 @@ const EditPostPage = () => {
             .then(r => {
                 setTitle(r.data.title);
                 setBody(r.data.body);
-                const imgs = Array.isArray(r.data.image) ? r.data.image : (r.data.image ? [r.data.image] : []);
+                // Handle singular or plural image field from DB
+                const imgs = Array.isArray(r.data.image)
+                    ? r.data.image
+                    : (r.data.image ? [r.data.image] : []);
                 setExistingImages(imgs);
             })
             .catch(() => setError("Failed to load post"))
@@ -44,12 +52,19 @@ const EditPostPage = () => {
             const fd = new FormData();
             fd.append("title", title);
             fd.append("body", body);
-            fd.append("existingImages", JSON.stringify(existingImages)); // send existing images to keep
-            images.forEach(img => fd.append("images", img)); // new images
-            await API.put(`/posts/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+
+            // Keep track of which old images we want to keep
+            fd.append("existingImages", JSON.stringify(existingImages));
+
+            // ✅ CHANGED TO "image" to match backend expectation
+            images.forEach(img => fd.append("image", img));
+
+            await API.put(`/posts/${id}`, fd, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
             navigate(`/post/${id}`);
         } catch (err) {
-            setError(err.response?.data?.message || "Failed");
+            setError(err.response?.data?.message || "Failed to update");
             setSaving(false);
         }
     };
@@ -84,7 +99,7 @@ const EditPostPage = () => {
                     <div>
                         <label style={labelStyle}>Photos</label>
                         <label htmlFor="edit-img" style={{ display: "inline-flex", marginTop: "10px", padding: "9px 20px", borderRadius: "8px", border: `1px solid ${t.border}`, color: t.textSub, fontSize: "13px", cursor: "pointer" }}>
-                            {previews.length || existingImages.length ? "Change photos" : "Choose photos"}
+                            {previews.length || existingImages.length ? "Add more photos" : "Choose photos"}
                         </label>
                         <input id="edit-img" type="file" accept="image/*,.jfif" multiple style={{ display: "none" }}
                             onChange={e => {
@@ -95,24 +110,26 @@ const EditPostPage = () => {
                                 }
                             }} />
 
-                        {(previews.length || existingImages.length) && (
+                        {(previews.length > 0 || existingImages.length > 0) && (
                             <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px,1fr))", gap: "10px" }}>
-                                {/* New image previews */}
-                                {previews.map((p, idx) => (
-                                    <div key={`preview-${idx}`} style={{ position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-                                        <img src={p} alt={`Preview ${idx + 1}`} style={{ width: "100%", height: "88px", objectFit: "cover" }} />
+
+                                {/* ✅ FIXED: Existing images from server */}
+                                {existingImages.map((img, idx) => (
+                                    <div key={`existing-${idx}`} style={{ position: "relative", borderRadius: "10px", overflow: "hidden", border: `1px solid ${t.border}` }}>
+                                        <img src={`${BASE_URL}/uploads/${img}`} alt="Existing" style={{ width: "100%", height: "88px", objectFit: "cover" }} />
                                         <button type="button" onClick={() => {
-                                            setImages(images.filter((_, i) => i !== idx));
-                                            setPreviews(previews.filter((_, i) => i !== idx));
+                                            setExistingImages(existingImages.filter((_, i) => i !== idx));
                                         }} style={{ position: "absolute", top: "6px", right: "6px", width: "22px", height: "22px", borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.55)", color: "white", cursor: "pointer", fontSize: "12px" }}>×</button>
                                     </div>
                                 ))}
-                                {/* Existing images */}
-                                {existingImages.map((img, idx) => (
-                                    <div key={`existing-${idx}`} style={{ position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-                                        <img src={`https://thefolio-lw3l.onrender.com//uploads/${img}`} alt={`Existing ${idx + 1}`} style={{ width: "100%", height: "88px", objectFit: "cover" }} />
+
+                                {/* New image previews */}
+                                {previews.map((p, idx) => (
+                                    <div key={`preview-${idx}`} style={{ position: "relative", borderRadius: "10px", overflow: "hidden", border: `1px solid ${t.border}` }}>
+                                        <img src={p} alt="New Preview" style={{ width: "100%", height: "88px", objectFit: "cover" }} />
                                         <button type="button" onClick={() => {
-                                            setExistingImages(existingImages.filter((_, i) => i !== idx));
+                                            setImages(images.filter((_, i) => i !== idx));
+                                            setPreviews(previews.filter((_, i) => i !== idx));
                                         }} style={{ position: "absolute", top: "6px", right: "6px", width: "22px", height: "22px", borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.55)", color: "white", cursor: "pointer", fontSize: "12px" }}>×</button>
                                     </div>
                                 ))}
