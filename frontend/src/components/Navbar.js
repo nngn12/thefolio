@@ -3,9 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
+// Fixed BASE_URL to perfectly match ProfilePage
 const BASE_URL = process.env.REACT_APP_API_URL
-    ? process.env.REACT_APP_API_URL.replace('/api', '')
-    : 'https://thefolio-lw3l.onrender.com/';
+    ? process.env.REACT_APP_API_URL.replace('/api', '').replace(/\/$/, '')
+    : 'https://thefolio-lw3l.onrender.com';
 
 const Navbar = () => {
     const navigate = useNavigate();
@@ -42,7 +43,8 @@ const Navbar = () => {
         color: variant === "fill" ? "white" : "#ec4899",
     });
 
-    const profileSrc = user?.profile_pic ? `${BASE_URL}/uploads/${user.profile_pic}` : null;
+    // ✅ FIXED: Changed profile_pic to profilePic
+    const profileSrc = user?.profilePic ? `${BASE_URL}/uploads/${user.profilePic}` : null;
 
     const publicLinks = (
         <>
