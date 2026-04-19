@@ -28,8 +28,6 @@ const HomePage = () => {
     return (
         <div style={{ fontFamily: t.fontSans, background: t.bg, minHeight: "100vh", paddingBottom: "80px" }}>
 
-            {/* --- EXTRA HEADER REMOVED FROM HERE --- */}
-
             {/* Hero */}
             <div
                 style={{
@@ -79,17 +77,29 @@ const HomePage = () => {
 
                 <div style={{ display: "grid", gap: "2px" }}>
                     {posts.map((post, i) => {
-                        const postImage = post.image ? `${BASE_URL}/uploads/${post.image}` : null;
-                        const authorName = post.author_name || "Unknown";
-                        const authorPic = post.author_pic ? `${BASE_URL}/uploads/${post.author_pic}` : null;
-                        const formattedDate = post.created_at
-                            ? new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        // ✅ FIX 1: Support both 'id' and '_id' so the click works
+                        const postId = post.id || post._id;
+
+                        // ✅ FIX 2: Check for nested author objects
+                        const authorName = post.author_name || post.author?.name || "Unknown";
+                        const authorPic = post.author_pic
+                            ? `${BASE_URL}/uploads/${post.author_pic}`
+                            : post.author?.profilePic
+                                ? `${BASE_URL}/uploads/${post.author.profilePic}`
+                                : null;
+
+                        // ✅ FIX 3: Check for both 'created_at' and 'createdAt'
+                        const postDate = post.created_at || post.createdAt;
+                        const formattedDate = postDate
+                            ? new Date(postDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                             : "No date";
+
+                        const postImage = post.image ? `${BASE_URL}/uploads/${post.image}` : null;
 
                         return (
                             <article
-                                key={post.id}
-                                onClick={() => navigate(`/post/${post.id}`)}
+                                key={postId} // Updated key
+                                onClick={() => navigate(`/post/${postId}`)} // Updated navigation URL
                                 style={{
                                     display: "flex", gap: "24px", cursor: "pointer", borderBottom: `1px solid ${t.border}`,
                                     padding: "28px 0", transition: "opacity 0.2s", animation: `fadeUp 0.4s ease ${i * 0.06}s both`
