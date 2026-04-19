@@ -280,18 +280,4 @@ const AdminPage = () => {
     );
 };
 
-{/* Example for the Members Table */ }
-<tbody>
-    {members.map((user) => (
-        <tr key={user._id}>
-            <td>{user.name}</td>
-            <td>{user.email}</td>
-            <td><span className={`badge ${user.status}`}>{user.status}</span></td>
-            <td>
-                <button onClick={() => toggleStatus(user._id)}>Toggle Status</button>
-            </td>
-        </tr>
-    ))}
-</tbody>
-
 export default AdminPage;
